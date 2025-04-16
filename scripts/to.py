@@ -3,6 +3,7 @@ import pandas as pd
 import json
 import re
 
+# 自动查找 Excel 文件
 excel_file = None
 for root, _, files in os.walk("."):
     for f in files:
@@ -17,20 +18,29 @@ if not excel_file:
 
 print(f"✅ 读取文件: {excel_file}")
 
+# 读取 Excel 分表
 df = pd.read_excel(excel_file, sheet_name="分表")
-result = {"金": [], "绿": [], "蓝": []}
 
+result = []
+
+# 遍历每个 cell（每个 cell 是一个组合）
 for col in df.columns:
-    if isinstance(col, str) and re.match(r"\d{2}[金绿蓝]", col):
-        color = col[-1]
-        if color in result:
-            for value in df[col].dropna():
-                positions = value.strip().split()
-                result[color].append([pos[:-1] for pos in positions if pos.endswith(color)])
+    for value in df[col].dropna():
+        combo_str = str(value).strip()
+        tokens = combo_str.split()
+        board = {}
+        for token in tokens:
+            match = re.match(r"^(\d{2})([金绿蓝])$", token)
+            if match:
+                pos, color = match.groups()
+                board[pos] = color
+        if board:
+            result.append(board)
 
-output_path = "data/combinations.json"
+# 保存 JSON
+output_path = "data/combinations_full.json"
 os.makedirs("data", exist_ok=True)
 with open(output_path, "w", encoding="utf-8") as f:
     json.dump(result, f, ensure_ascii=False, indent=2)
 
-print(f"✅ 已保存组合数据至 {output_path}")
+print(f"✅ 已保存为组合 JSON 文件: {output_path}")
