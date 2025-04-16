@@ -15,6 +15,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 安装 Python 依赖
+        run: pip install pandas openpyxl
+
+      - name: 运行 Excel 转 JSON 脚本
+        run: python scripts/to.py
+
+      - name: 添加 CNAME 文件（自定义域名）
+        run: echo "xddq.thinkly.it.com" > CNAME
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
