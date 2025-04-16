@@ -15,7 +15,7 @@
 
 ## 🌐 在线演示地址
 
-👉 [点击打开在线版本](https://harry-sunhao.github.io/xssq-combination)
+👉 [点击打开在线版本](https://harry-sunhao.github.io/xddq_combination)
 
 ## 📁 项目结构
 
@@ -35,7 +35,7 @@
 1. 克隆项目：
 
 ```bash
-   git clone https://github.com/your-username/xssq-combination.git
+   git clone https://github.com/your-username/xddq_combination.git
 ```
 
 2. 打开 `index.html` 即可在浏览器中使用，无需服务器。
@@ -58,7 +58,7 @@
 ## 📝 作者信息
 
 - 作者：Hao Sun(桃源 · 太叔)
-- GitHub: [harry-sunhao](https://github.com/harry-sunhao)
+- GitHub: [harry-sunhao](https://harry-sunhao.github.io)
 
 
 ## 📄 License
