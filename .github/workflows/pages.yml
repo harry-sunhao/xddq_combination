@@ -6,7 +6,7 @@ on:
       - main
 
 permissions:
-  contents: write  # peaceiris 需要写权限
+  contents: write
 
 jobs:
   deploy:
@@ -20,5 +20,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .  # 部署根目录（即当前 index.html 所在位置）
+          publish_dir: .
           publish_branch: gh-pages
+          cname: xddq.thinkly.it.com
