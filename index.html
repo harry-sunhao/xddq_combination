@@ -5,12 +5,27 @@
   <title>仙兽棋盘组合推荐V1.2</title>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
-    .grid { display: grid; grid-template-columns: repeat(4, 60px); gap: 10px; margin-bottom: 20px; }
-    .cell {
-      width: 60px; height: 60px; text-align: center; line-height: 60px;
-      border: 1px solid #999; cursor: pointer; border-radius: 6px;
-      user-select: none; font-weight: bold;
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      gap: 10px;
     }
+    .cell {
+      width: 60px;
+      height: 60px;
+      text-align: center;
+      line-height: 20px;
+      border: 1px solid #999;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+      padding-top: 8px;
+    }
+    
+    
+    
     .金 { background-color: gold; }
     .绿 { background-color: lightgreen; }
     .蓝 { background-color: lightblue; }
@@ -21,20 +36,42 @@
   </style>
 </head>
 <body>
-  <h2>仙兽棋盘组合推荐V1.2</h2>
-  <p>点击格子切换颜色（金 → 绿 → 蓝 → 空）</p>
-  <div class="grid" id="grid"></div>
-  <button onclick="checkCombinations()">分析组合</button>
-  <button onclick="resetGrid()">重置</button>
-  <button onclick="suggestCombination()">添加我的组合建议</button>
-  <h3>结果</h3>
+  <h2>仙兽棋盘组合推荐V1.3</h2>
+
+  <p style="margin-bottom: 10px;">点击格子循环设置颜色（金 → 绿 → 蓝 → 空）</p>
+  
+  <!-- 左右棋盘并列 -->
+  <div style="display: flex; align-items: flex-start; gap: 40px;">
+    <!-- 左棋盘区域 -->
+    <div style="display: flex; flex-direction: column; align-items: flex-start;">
+      <h4>当前棋盘设定</h4>
+      <div id="grid" class="grid"></div>
+      <div style="margin-top: 10px;">
+        <button onclick="checkCombinations()">分析组合</button>
+        <button onclick="resetGrid()">重置</button>
+        <button onclick="suggestCombination()">添加我的组合建议</button>
+      </div>
+    </div>
+  
+    <!-- 右侧预览 -->
+    <div style="display: flex; flex-direction: column; align-items: center;">
+      <h4>预览组合</h4>
+      <div id="previewGrid" class="grid"></div>
+    </div>
+  </div>
+  
+  <!-- 分析结果与建议放在底部 -->
+  <h3 style="margin-top: 30px;">结果</h3>
   <div id="results"></div>
+  
   <h3>建议提交</h3>
-  <textarea id="suggestionBox" readonly placeholder="你点击格子后生成的组合会显示在这里，复制后可反馈给作者"></textarea>
+  <textarea id="suggestionBox" placeholder="你点击格子后生成的组合会显示在这里，复制后可反馈给作者" readonly></textarea>
+  
 
   <script>
     const positions = ["31","32","33","34","21","22","23","24","11","12","13","14"];
     const grid = document.getElementById("grid");
+    const previewGrid = document.getElementById("previewGrid");
     const colors = ["", "金", "绿", "蓝"];
     const cellStates = {};
 
@@ -61,9 +98,16 @@
         div.className = "cell";
         div.innerText = pos;
       });
+    
+      const previewGrid = document.getElementById("previewGrid");
+      if (previewGrid) {
+        previewGrid.innerHTML = "";
+      }
+    
       document.getElementById("results").innerHTML = "";
       document.getElementById("suggestionBox").value = "";
     }
+    
 
     function suggestCombination() {
       const output = [];
@@ -146,7 +190,7 @@
           inferred.forEach((entry, i) => {
             const encoded = utf8ToBase64(entry.board);
             const positions = Object.entries(entry.board).map(([p, c]) => p + c).join(" ");
-            output.push(`<div onclick="fillBoardFromEncoded('${encoded}')" style="cursor:pointer">${i + 1}. ${entry.tag}：${positions} (${entry.comment})</div>`);
+            output.push(`<div onclick="previewBoard('${encoded}')" style="cursor:pointer">${i + 1}. ${entry.tag}：${positions} (${entry.comment})</div>`);
           });
 
           document.getElementById("results").innerHTML = output.join("\n");
@@ -180,9 +224,30 @@
         alert("❌ 无法填入组合：" + e);
       }
     }
+    function previewBoard(data) {
+      data = base64ToUtf8(data);
+      const container = document.getElementById("previewGrid");
+      container.innerHTML = "";
+      positions.forEach(pos => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        
+        const color = data[pos] || "";
+        console.log(data);
+        if (color === "金") div.classList.add("金");
+        if (color === "绿") div.classList.add("绿");
+        if (color === "蓝") div.classList.add("蓝");
+    
+        div.innerHTML = color ? `${pos}<br>(${color})` : pos;
+        container.appendChild(div);
+      });
+    }
+    
+    
+    
   </script>
   <footer style="position:fixed; bottom:10px; left:0; width:100%; text-align:center; font-size:13px; color:#999;">
-    © 2024 桃源·太叔 版权所有 · Powered by 云在天(Harry)
+    © 2025 桃源·太叔 版权所有 · Powered by 云在天(Harry)
   </footer>
   
 </body>
