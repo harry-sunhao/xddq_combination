@@ -8,7 +8,7 @@ const [owner, repoName] = repo.split('/');
 
 const COMBINATIONS_PATH = path.join('data', 'combinations_full.json');
 
-// 获取所有 open issues（最多100个）
+
 async function fetchOpenIssues() {
   const res = await axios.get(`https://api.github.com/repos/${repo}/issues`, {
     headers: {
@@ -21,21 +21,33 @@ async function fetchOpenIssues() {
     },
   });
 
-  // 只保留非 PR 的 issue
   return res.data.filter(issue => !issue.pull_request);
 }
 
-// 提取 issue 中的 JSON 数据（你也可以换成别的解析逻辑）
 function parseIssueData(issue) {
   try {
-    return JSON.parse(issue.body);
+    const match = issue.body.match(/```json\s*([\s\S]*?)\s*```/i);
+    if (!match) {
+      console.warn(`⚠️ issue #${issue.number} 中未找到 json 代码块`);
+      return null;
+    }
+
+    const jsonText = match[1].trim();
+    const parsed = JSON.parse(jsonText);
+
+    if (typeof parsed === 'object') {
+      return parsed;
+    } else {
+      console.warn(`⚠️ issue #${issue.number} 的内容不是有效的 JSON 对象或数组`);
+      return null;
+    }
+
   } catch (e) {
-    console.warn(`⚠️ 无法解析 issue #${issue.number} 的 JSON 内容`);
+    console.warn(`❌ 解析 issue #${issue.number} 出错:`, e.message);
     return null;
   }
 }
 
-// 合并 issue 内容到主组合文件
 function mergeCombinations(existing, additions) {
   const merged = [...existing];
   for (const item of additions) {
@@ -46,7 +58,6 @@ function mergeCombinations(existing, additions) {
   return merged;
 }
 
-// 关闭指定 issue
 async function closeIssue(number) {
   await axios.patch(`https://api.github.com/repos/${repo}/issues/${number}`, {
     state: 'closed',
@@ -60,7 +71,6 @@ async function closeIssue(number) {
   console.log(`✅ 已关闭 issue #${number}`);
 }
 
-// 主执行函数
 async function run() {
   console.log('📥 正在获取 open issues...');
   const issues = await fetchOpenIssues();
@@ -70,9 +80,17 @@ async function run() {
 
   for (const issue of issues) {
     const data = parseIssueData(issue);
-    if (data && Array.isArray(data)) {
-      newCombinations = newCombinations.concat(data);
-      mergedIssues.push(issue.number);
+  
+    if (data) {
+      if (Array.isArray(data)) {
+        newCombinations = newCombinations.concat(data);
+        mergedIssues.push(issue.number);
+      } else if (typeof data === 'object') {
+        newCombinations.push(data);
+        mergedIssues.push(issue.number);
+      } else {
+        console.warn(`⚠️ issue #${issue.number} 的数据不是数组也不是对象，已跳过`);
+      }
     }
   }
 

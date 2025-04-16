@@ -1,0 +1,27 @@
+# Node.js 相关
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+package.json
+
+# dotenv 文件（含敏感信息）
+.env
+.env.local
+.env.*.local
+
+# VSCode 调试配置（可选忽略）
+.vscode/
+
+# 操作系统缓存
+.DS_Store
+Thumbs.db
+
+# Hugo 和临时生成内容（如果有）
+public/
+resources/_gen/
+
+# GitHub Actions 临时目录（可选）
+.github/workflows/*.log
+.github/scripts/*.tmp
