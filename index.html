@@ -16,6 +16,7 @@
     .蓝 { background-color: lightblue; }
     .matched { outline: 3px solid green; }
     .potential { outline: 3px dashed orange; }
+    .warn { outline: 3px solid red; }
     textarea { width: 100%; height: 60px; margin-top: 10px; }
   </style>
 </head>
@@ -26,13 +27,18 @@
   <button onclick="checkCombinations()">分析组合</button>
   <button onclick="resetGrid()">重置</button>
   <button onclick="suggestCombination()">添加我的组合建议</button>
+  <button onclick="recommendNextDraw()">智能推荐下一步</button>
   <h3>结果</h3>
   <div id="results"></div>
   <h3>建议提交</h3>
   <textarea id="suggestionBox" readonly placeholder="你点击格子后生成的组合会显示在这里，复制后可反馈给作者"></textarea>
 
   <script>
-    const positions = ['11','12','13','14','21','22','23','24','31','32','33','34'];
+    const positions = [
+      '31','32','33','34',
+      '21','22','23','24',
+      '11','12','13','14'
+    ];
     const grid = document.getElementById('grid');
     const colors = ['', '金', '绿', '蓝'];
     const cellStates = {};
@@ -55,9 +61,9 @@
 
     function checkCombinations() {
       if (!combinationData || Object.keys(combinationData).length === 0) return;
-      document.querySelectorAll('.cell').forEach(c => c.classList.remove('matched', 'potential'));
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('matched', 'potential', 'warn'));
       const allResults = [];
-      const matched = [], potential = [], others = [];
+      const matched = [], potential = [], warning = [], others = [];
 
       for (const [color, combos] of Object.entries(combinationData)) {
         for (const group of combos) {
@@ -71,13 +77,18 @@
             matched.push(`✔️ 已匹配3个 ${color}: ${group.join(', ')}`);
           } else if (partialMatch && states.includes('')) {
             group.forEach(p => document.getElementById('cell-' + p).classList.add('potential'));
-            potential.push(`⚠️ 可能组合 (${color}): ${group.join(', ')}`);
+            if (color === '金') {
+              potential.push(`⚠️ 可能组合 (${color}): ${group.join(', ')}`);
+            } else {
+              group.forEach(p => document.getElementById('cell-' + p).classList.add('warn'));
+              warning.push(`🔴 非金色双已知组合 (${color}): ${group.join(', ')}`);
+            }
           } else {
             others.push(`❓ 所有组合 (${color}): ${group.join(', ')} => [${states.join(', ')}]`);
           }
         }
       }
-      allResults.push(...matched, ...potential, ...others);
+      allResults.push(...matched, ...potential, ...warning, ...others);
       document.getElementById('results').innerHTML = allResults.join('<br>');
     }
 
@@ -100,8 +111,7 @@
       document.getElementById('suggestionBox').value = output.length ? output.join(' ') : '⚠️ 请至少选择一个颜色位置';
     }
 
-    // 加载 JSON 组合数据
-    fetch('./data/combinations.json')  // 相对路径，适用于部署子目录
+    fetch('./data/combinations.json')
       .then(res => res.json())
       .then(data => {
         combinationData = data;
@@ -109,6 +119,55 @@
       .catch(err => {
         document.getElementById('results').innerText = '❌ 无法加载组合数据：' + err;
       });
+
+    function recommendNextDraw() {
+      if (!combinationData || Object.keys(combinationData).length === 0) return;
+      const scores = {};
+      const reasons = {};
+
+      positions.forEach(p => { if (!cellStates[p]) scores[p] = 0; });
+
+      for (const [color, combos] of Object.entries(combinationData)) {
+        for (const group of combos) {
+          const known = group.filter(p => cellStates[p]);
+          const unknown = group.filter(p => !cellStates[p]);
+          const knownColor = known.every(p => cellStates[p] === cellStates[known[0]]) ? cellStates[known[0]] : null;
+
+          if (known.length === 2 && unknown.length === 1 && knownColor === color) {
+            const target = unknown[0];
+            if (knownColor === '金') {
+              scores[target] = (scores[target] || 0) + 10;
+              if (!reasons[target]) reasons[target] = new Set();
+              reasons[target].add(`该位置可补足金色组合 ${group.join(', ')}`);
+            } else {
+              scores[target] = (scores[target] || 0) - 10;
+              if (!reasons[target]) reasons[target] = new Set();
+              reasons[target].add(`该位置可能补成 ${knownColor} 组合，应避免（组合 ${group.join(', ')})`);
+            }
+          }
+        }
+      }
+
+      const ranked = Object.entries(scores)
+        .filter(([, score]) => score > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3);
+
+      let recommendText = '';
+      if (ranked.length) {
+        recommendText += '<strong>🌟 推荐尝试以下位置：</strong><br>';
+        ranked.forEach(([pos, score], idx) => {
+          recommendText += `${idx + 1}. 位置 ${pos}（得分 ${score}）<br>`;
+          if (reasons[pos]) {
+            recommendText += `<ul>` + [...reasons[pos]].map(r => `<li>${r}</li>`).join('') + `</ul>`;
+          }
+        });
+      } else {
+        recommendText = '⚠️ 暂无推荐（请先翻开两个格子，避免非金色组合）';
+      }
+
+      document.getElementById('results').innerHTML = recommendText + '<br><br>' + document.getElementById('results').innerHTML;
+    }
   </script>
 </body>
 </html>
