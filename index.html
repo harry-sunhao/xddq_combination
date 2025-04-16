@@ -66,7 +66,7 @@
   
   <h3>建议提交</h3>
   <textarea id="suggestionBox" placeholder="你点击格子后生成的组合会显示在这里，复制后可反馈给作者" readonly></textarea>
-  
+  <button onclick="submitCombinationViaCloudflare()">提交组合到作者</button>
 
   <script>
     const positions = ["31","32","33","34","21","22","23","24","11","12","13","14"];
@@ -243,7 +243,31 @@
       });
     }
     
-    
+    async function submitCombinationViaCloudflare() {
+      const payload = {};
+  
+      for (const [pos, color] of Object.entries(cellStates)) {
+        if (color) payload[pos] = color;
+      }
+  
+      if (Object.keys(payload).length === 0) {
+        alert("⚠️ 当前没有设定任何颜色，无法提交");
+        return;
+      }
+  
+      try {
+        const res = await fetch("https://xddq-submit.pages.dev/api/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+  
+        const text = await res.text();
+        alert(text);
+      } catch (err) {
+        alert("❌ 提交失败：" + err.message);
+      }
+    }
     
   </script>
   <footer style="position:fixed; bottom:10px; left:0; width:100%; text-align:center; font-size:13px; color:#999;">

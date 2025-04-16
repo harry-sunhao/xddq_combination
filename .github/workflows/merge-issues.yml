@@ -1,0 +1,38 @@
+name: Merge Submitted Combinations
+
+on:
+  workflow_dispatch:      # 手动触发
+  schedule:
+    - cron: '0 * * * *'   # 每小时执行一次
+  push:
+    paths:
+      - .github/scripts/merge_issues.js
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install axios
+
+      - name: Run merge script
+        run: node .github/scripts/merge_issues.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "auto-merge-bot"
+          git config user.email "bot@xddq.local"
+          git add data/combinations_full.json
+          git diff --cached --quiet || git commit -m "chore: 合并用户提交组合"
+          git push
