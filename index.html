@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>仙兽棋盘可能组合模拟器</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(4, 60px); gap: 10px; margin-bottom: 20px; }
+    .cell {
+      width: 60px; height: 60px; text-align: center; line-height: 60px;
+      border: 1px solid #999; cursor: pointer; border-radius: 6px;
+      user-select: none; font-weight: bold;
+    }
+    .金 { background-color: gold; }
+    .绿 { background-color: lightgreen; }
+    .蓝 { background-color: lightblue; }
+    .matched { outline: 3px solid green; }
+    .potential { outline: 3px dashed orange; }
+    textarea { width: 100%; height: 60px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h2>仙兽棋盘可能组合模拟器</h2>
+  <p>点击格子循环设置颜色（金 → 绿 → 蓝 → 空）</p>
+  <div class="grid" id="grid"></div>
+  <button onclick="checkCombinations()">分析组合</button>
+  <button onclick="resetGrid()">重置</button>
+  <button onclick="suggestCombination()">添加我的组合建议</button>
+  <h3>结果</h3>
+  <div id="results"></div>
+  <h3>建议提交</h3>
+  <textarea id="suggestionBox" readonly placeholder="你点击格子后生成的组合会显示在这里，复制后可反馈给作者"></textarea>
+
+  <script>
+    const positions = ['11','12','13','14','21','22','23','24','31','32','33','34'];
+    const grid = document.getElementById('grid');
+    const colors = ['', '金', '绿', '蓝'];
+    const cellStates = {};
+    let combinationData = {};
+
+    positions.forEach(pos => {
+      const div = document.createElement('div');
+      div.className = 'cell';
+      div.id = 'cell-' + pos;
+      div.innerText = pos;
+      div.onclick = () => {
+        const current = cellStates[pos] || '';
+        const nextColor = colors[(colors.indexOf(current) + 1) % colors.length];
+        cellStates[pos] = nextColor;
+        div.className = 'cell ' + nextColor;
+        div.innerText = nextColor ? pos + "\n(" + nextColor + ")" : pos;
+      };
+      grid.appendChild(div);
+    });
+
+    function checkCombinations() {
+      if (!combinationData || Object.keys(combinationData).length === 0) return;
+      document.querySelectorAll('.cell').forEach(c => c.classList.remove('matched', 'potential'));
+      const allResults = [];
+      const matched = [], potential = [], others = [];
+
+      for (const [color, combos] of Object.entries(combinationData)) {
+        for (const group of combos) {
+          const states = group.map(p => cellStates[p] || '');
+          const known = states.filter(v => v);
+          const allMatch = known.length === 3 && known.every(v => v === color);
+          const partialMatch = known.length === 2 && known.every(v => v === color);
+
+          if (allMatch) {
+            group.forEach(p => document.getElementById('cell-' + p).classList.add('matched'));
+            matched.push(`✔️ 已匹配3个 ${color}: ${group.join(', ')}`);
+          } else if (partialMatch && states.includes('')) {
+            group.forEach(p => document.getElementById('cell-' + p).classList.add('potential'));
+            potential.push(`⚠️ 可能组合 (${color}): ${group.join(', ')}`);
+          } else {
+            others.push(`❓ 所有组合 (${color}): ${group.join(', ')} => [${states.join(', ')}]`);
+          }
+        }
+      }
+      allResults.push(...matched, ...potential, ...others);
+      document.getElementById('results').innerHTML = allResults.join('<br>');
+    }
+
+    function resetGrid() {
+      for (const pos of positions) {
+        cellStates[pos] = '';
+        const div = document.getElementById('cell-' + pos);
+        div.className = 'cell';
+        div.innerText = pos;
+      }
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('suggestionBox').value = '';
+    }
+
+    function suggestCombination() {
+      const output = [];
+      for (const [pos, color] of Object.entries(cellStates)) {
+        if (color) output.push(pos + color);
+      }
+      document.getElementById('suggestionBox').value = output.length ? output.join(' ') : '⚠️ 请至少选择一个颜色位置';
+    }
+
+    // 加载 JSON 组合数据
+    fetch('./data/combinations.json')  // 相对路径，适用于部署子目录
+      .then(res => res.json())
+      .then(data => {
+        combinationData = data;
+      })
+      .catch(err => {
+        document.getElementById('results').innerText = '❌ 无法加载组合数据：' + err;
+      });
+  </script>
+</body>
+</html>
