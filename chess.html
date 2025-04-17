@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>仙兽棋盘组合推荐V1.4</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      gap: 10px;
+    }
+    .cell {
+      width: 60px;
+      height: 60px;
+      text-align: center;
+      line-height: 20px;
+      border: 1px solid #999;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+      padding-top: 8px;
+    }
+    
+    
+    
+    .金 { background-color: gold; }
+    .绿 { background-color: lightgreen; }
+    .蓝 { background-color: lightblue; }
+    .gold-potential { outline: 3px dashed gold !important; }
+    .matched { outline: 3px solid green; }
+    .warn { outline: 3px solid red; }
+    textarea { width: 100%; height: 60px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <p style="margin-bottom: 10px;">点击格子循环设置颜色（金 → 绿 → 蓝 → 空）</p>
+  
+  <!-- 左右棋盘并列 -->
+  <div style="display: flex; align-items: flex-start; gap: 40px;">
+    <!-- 左棋盘区域 -->
+    <div style="display: flex; flex-direction: column; align-items: flex-start;">
+      <h4>当前棋盘设定</h4>
+      <div id="grid" class="grid"></div>
+      <div style="margin-top: 10px;">
+        <button onclick="checkCombinations()">分析组合</button>
+        <button onclick="resetGrid()">重置</button>
+        <button onclick="suggestCombination()">添加我的组合建议</button>
+      </div>
+    </div>
+  
+    <!-- 右侧预览 -->
+    <div style="display: flex; flex-direction: column; align-items: center;">
+      <h4>预览组合</h4>
+      <div id="previewGrid" class="grid"></div>
+    </div>
+  </div>
+  
+  <!-- 分析结果与建议放在底部 -->
+  <h3 style="margin-top: 30px;">结果</h3>
+  <div id="results"></div>
+  
+  <h3>建议提交</h3>
+  <textarea id="suggestionBox" placeholder="你点击格子后生成的组合会显示在这里，提交后可反馈给作者, 数据会定期同步至数据库." readonly></textarea>
+  <button onclick="submitCombinationViaCloudflare()">提交组合到作者</button>
+
+  <script>
+    const positions = ["31","32","33","34","21","22","23","24","11","12","13","14"];
+    const grid = document.getElementById("grid");
+    const previewGrid = document.getElementById("previewGrid");
+    const colors = ["", "金", "绿", "蓝"];
+    const cellStates = {};
+
+    positions.forEach(pos => {
+      const div = document.createElement("div");
+      div.className = "cell";
+      div.id = "cell-" + pos;
+      div.innerText = pos;
+      div.onclick = () => {
+        const current = cellStates[pos] || "";
+        const nextColor = colors[(colors.indexOf(current) + 1) % colors.length];
+        cellStates[pos] = nextColor;
+        div.className = "cell " + nextColor;
+        div.innerText = nextColor ? pos + "\n(" + nextColor + ")" : pos;
+        checkCombinations(); // 实时分析
+      };
+      grid.appendChild(div);
+    });
+
+    function resetGrid() {
+      positions.forEach(pos => {
+        cellStates[pos] = "";
+        const div = document.getElementById("cell-" + pos);
+        div.className = "cell";
+        div.innerText = pos;
+      });
+    
+      const previewGrid = document.getElementById("previewGrid");
+      if (previewGrid) {
+        previewGrid.innerHTML = "";
+      }
+    
+      document.getElementById("results").innerHTML = "";
+      document.getElementById("suggestionBox").value = "";
+    }
+    
+
+    function suggestCombination() {
+      const output = [];
+      for (const [pos, color] of Object.entries(cellStates)) {
+        if (color) output.push(pos + color);
+      }
+      document.getElementById("suggestionBox").value = output.length ? output.join("") : "⚠️ 请至少选择一个颜色位置";
+    }
+
+    function analyzeFullCombinations(fullData, currentStates) {
+      const recommendations = [];
+      const seen = new Set(); // 用于去重
+    
+      fullData.forEach(board => {
+        let isStrictMatch = true;
+    
+        for (const [pos, color] of Object.entries(currentStates)) {
+          if (color) {
+            if (!board[pos] || board[pos] !== color) {
+              isStrictMatch = false;
+              break;
+            }
+          }
+        }
+    
+        if (!isStrictMatch) return;
+    
+        // 生成排序后的唯一标识 key，用于去重
+        const key = Object.entries(board)
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([p, c]) => `${p}:${c}`)
+          .join("|");
+    
+        if (seen.has(key)) return;
+        seen.add(key);
+    
+        const colorCount = { 金: 0, 绿: 0, 蓝: 0 };
+        Object.values(board).forEach(c => {
+          if (colorCount[c] !== undefined) colorCount[c]++;
+        });
+    
+        let tag = "🟢 可接受";
+        let score = 0;
+        let comment = `颜色分布：金${colorCount["金"]} 绿${colorCount["绿"]} 蓝${colorCount["蓝"]}`;
+    
+        if (colorCount["金"] >= 3) {
+          tag = "⭐ 推荐（含3金）";
+          score += 100;
+        } else if (colorCount["绿"] >= 3 || colorCount["蓝"] >= 3) {
+          tag = "⚠️ 规避（含3绿/蓝）";
+          score -= 50;
+        }
+    
+        const matchedCount = Object.entries(currentStates).filter(
+          ([p, c]) => c && board[p] === c
+        ).length;
+    
+        score += matchedCount * 10;
+        comment = `命中 ${matchedCount}，` + comment;
+    
+        recommendations.push({ board, score, tag, comment });
+      });
+    
+      return recommendations.sort((a, b) => b.score - a.score);
+    }
+    
+
+    function checkCombinations() {
+      document.getElementById("results").innerHTML = "⏳ 正在分析组合...";
+      fetch("./data/combinations_full.json")
+        .then(res => res.json())
+        .then(fullData => {
+          const inferred = analyzeFullCombinations(fullData, cellStates);
+          const output = ["<h4>🧠 推荐组合：</h4>"];
+
+          document.querySelectorAll(".cell").forEach(c => {
+            c.classList.remove("gold-potential", "warn");
+          });
+
+          inferred.forEach((entry, i) => {
+            const encoded = utf8ToBase64(entry.board);
+            const positions = Object.entries(entry.board).map(([p, c]) => p + c).join(" ");
+            output.push(`<div onclick="previewBoard('${encoded}')" style="cursor:pointer">${i + 1}. ${entry.tag}：${positions} (${entry.comment})</div>`);
+          });
+
+          document.getElementById("results").innerHTML = output.join("\n");
+        })
+        .catch(err => {
+          document.getElementById("results").innerHTML = "❌ 加载组合数据失败：" + err;
+        });
+    }
+
+    function utf8ToBase64(obj) {
+      return btoa(unescape(encodeURIComponent(JSON.stringify(obj))));
+    }
+
+    function base64ToUtf8(str) {
+      return JSON.parse(decodeURIComponent(escape(atob(str))));
+    }
+
+    function fillBoardFromEncoded(encoded) {
+      try {
+        const data = base64ToUtf8(encoded);
+        for (const [pos, color] of Object.entries(data)) {
+          if (!cellStates[pos]) {
+            cellStates[pos] = color;
+            const div = document.getElementById("cell-" + pos);
+            div.className = "cell " + color;
+            div.innerText = pos + "\n(" + color + ")";
+          }
+        }
+        checkCombinations();
+      } catch (e) {
+        alert("❌ 无法填入组合：" + e);
+      }
+    }
+    function previewBoard(data) {
+      data = base64ToUtf8(data);
+      const container = document.getElementById("previewGrid");
+      container.innerHTML = "";
+      positions.forEach(pos => {
+        const div = document.createElement("div");
+        div.className = "cell";
+        
+        const color = data[pos] || "";
+        console.log(data);
+        if (color === "金") div.classList.add("金");
+        if (color === "绿") div.classList.add("绿");
+        if (color === "蓝") div.classList.add("蓝");
+    
+        div.innerHTML = color ? `${pos}<br>(${color})` : pos;
+        container.appendChild(div);
+      });
+    }
+    
+    async function submitCombinationViaCloudflare() {
+      const payload = {};
+  
+      for (const [pos, color] of Object.entries(cellStates)) {
+        if (color) payload[pos] = color;
+      }
+  
+      if (Object.keys(payload).length === 0) {
+        alert("⚠️ 当前没有设定任何颜色，无法提交");
+        return;
+      }
+  
+      try {
+        const res = await fetch("https://xddq-submit.pages.dev/submit", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+  
+        const text = await res.text();
+        alert(text);
+      } catch (err) {
+        alert("❌ 提交失败：" + err.message);
+      }
+    }
+    
+  </script>
+  
+  
+</body>
+</html>
