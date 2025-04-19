@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://xddq.thinkly.it.com/sitemap.xml
