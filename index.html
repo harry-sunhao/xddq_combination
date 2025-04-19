@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>寻道大千功能合集</title>
+  <meta name="baidu-site-verification" content="codeva-wHipxPyLvU" />
+  <meta name="keywords" content="寻道大千, 工具合集, 导航平台, 在线资源, 实用网站, 炼器大会">
+  <meta name="robots" content="index, follow">
+  <link rel="canonical" href="https://xddq.thinkly.it.com/index.html">
+
+  <title>寻道大千 | 首页 - 功能合集导航</title>
+  <meta name="description" content="这是寻道大千的主页面，提供多个实用功能入口，如仙兽棋盘、炼器大会等。">
+
   <style>
     html, body {
       height: 100%;
@@ -45,7 +52,19 @@
       width: 100%;
       height: 60dvh;
       border: none;
-      display: block;
+      display: none;
+    }.loader {
+      text-align: center;
+      font-size: 16px;
+      color: #333;
+      padding: 30px;
+      animation: blink 1s infinite;
+    }
+    .placeholder {
+      text-align: center;
+      padding: 40px 20px;
+      font-size: 16px;
+      color: #555;
     }
     .donation {
       text-align: center;
@@ -85,20 +104,28 @@
     <button class="tab-button" onclick="switchTab('tab-2048')">炼器大会AI</button>
   </header>
 
-  <div id="tab-chess" class="tab-content active">
-    <iframe id="iframe-chess" src="./chess.html"></iframe>
-  </div>
+  <main>
+    <section id="tab-chess" class="tab-content active">
+      <div class="placeholder" id="placeholder-chess">
+        🧩 欢迎使用【仙兽棋盘推荐】功能<br>点击上方按钮即可加载工具内容。
+      </div>
+      <div class="loader" id="loader-chess">🔄 正在加载仙兽棋盘，请稍候...</div>
+      <iframe title="仙兽棋盘工具" data-src="./chess.html"></iframe>
+    </section>
 
-  <div id="tab-2048" class="tab-content">
-    <iframe id="iframe-2048" src="2048/index.html"></iframe>
-  </div>
+    <section id="tab-2048" class="tab-content">
+      <div class="placeholder" id="placeholder-2048">
+        🔮 欢迎体验【炼器大会 AI 模拟】<br>点击上方标签加载炼器策略分析系统。
+      </div>
+      <div class="loader" id="loader-2048">🔮 正在加载炼器大会 AI 模拟器，请稍候...</div>
+      <iframe title="炼器大会 AI 模拟器" data-src="2048/index.html"></iframe>
+    </section>
 
-
-
-  <div class="donation">
-    ☕ 如果你觉得有用，欢迎打赏支持：<br>
-    <img src="./img/qrcode.jpg" alt="打赏二维码">
-  </div>
+    <section class="donation">
+      ☕ 如果你觉得有用，欢迎打赏支持：<br>
+      <img src="./img/qrcode.jpg" alt="寻道大千网站赞助二维码，欢迎打赏支持">
+    </section>
+  </main>
 
   <footer>
     <div>
@@ -120,8 +147,28 @@
     function switchTab(id) {
       document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+
       document.querySelector(`[onclick*="${id}"]`).classList.add('active');
-      document.getElementById(id).classList.add('active');
+      const tab = document.getElementById(id);
+      tab.classList.add('active');
+
+      const iframe = tab.querySelector('iframe');
+      const placeholder = tab.querySelector('.placeholder');
+      const loader = tab.querySelector('.loader');
+
+      if (!iframe.src) {
+        iframe.src = iframe.dataset.src;
+        iframe.style.display = "none";
+        if (placeholder) placeholder.style.display = "none";
+        iframe.onload = () => {
+          iframe.style.display = "block";
+          if (loader) loader.style.display = "none";
+        };
+
+      }else {
+        iframe.style.display = "block";
+        if (loader) loader.style.display = "none";
+      }
     }
   </script>
 </body>
